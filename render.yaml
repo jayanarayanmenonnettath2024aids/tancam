@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: unifyops-api
+    env: python
+    buildCommand: >
+      pip install -r requirements.txt &&
+      python -m spacy download en_core_web_sm &&
+      python db/init_db.py
+    startCommand: python main.py --mode api
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: FLASK_ENV
+        value: production
+      - key: TRIGGER_SERVER_URL
+        value: http://localhost:8001
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_PASSWORD
+        sync: false
+
+  - type: worker
+    name: unifyops-triggers
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py --mode triggers
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_PASSWORD
+        sync: false

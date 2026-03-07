@@ -1,0 +1,117 @@
+import { useState, useEffect } from 'react';
+import axios from '../api/axiosConfig';
+import { ENDPOINTS } from '../api/endpoints';
+
+export default function Dashboard() {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [lastUpdated, setLastUpdated] = useState('');
+
+    const fetchData = async () => {
+        try {
+            const res = await axios.get(ENDPOINTS.ANALYTICS_SUMMARY);
+            setData(res.data);
+            setLastUpdated(new Date().toLocaleTimeString());
+        } catch (err) {
+            console.error(err);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 60000); // 60s
+        return () => clearInterval(interval);
+    }, []);
+
+    if (loading && !data) return <div className="p-8 text-center animate-pulse text-slate-500">Loading Dashboard Data...</div>;
+
+    const valueChange = data?.total_trade_value_prev_month
+        ? ((data.total_trade_value_month - data.total_trade_value_prev_month) / data.total_trade_value_prev_month * 100).toFixed(1)
+        : 0;
+
+    return (
+        <div className="p-8 space-y-6">
+            <div className="flex justify-between items-end">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-800">Executive Dashboard</h1>
+                    <p className="text-slate-500 mt-1">Real-time unification of trade operations.</p>
+                </div>
+                <div className="text-sm text-slate-400 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Live Sync (Updated {lastUpdated})
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+
+                {/* Total Trade Value */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-2">Total Trade Value</p>
+                    <p className="text-3xl font-black text-slate-800 mb-2 font-mono">₹{(data?.total_trade_value_month || 0).toLocaleString()}</p>
+                    <p className={`text-xs font-bold ${valueChange > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {valueChange > 0 ? '↑' : '↓'} {Math.abs(valueChange)}% vs last month
+                    </p>
+                </div>
+
+                {/* Active Shipments */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-2">Active Shipments</p>
+                    <p className="text-3xl font-black text-slate-800 mb-2 font-mono">{data?.active_shipments || 0}</p>
+                    <p className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-1 inline-block rounded">PENDING STATUS</p>
+                </div>
+
+                {/* Compliance Rate */}
+                <div className={`p-6 rounded-2xl border shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group
+            ${data?.compliance_rate > 90 ? 'bg-emerald-50 border-emerald-200' : data?.compliance_rate > 70 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'}`}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                    <p className={`text-sm font-semibold uppercase tracking-widest mb-2 
+                ${data?.compliance_rate > 90 ? 'text-emerald-700' : data?.compliance_rate > 70 ? 'text-amber-700' : 'text-rose-700'}`}>Compliance Rate</p>
+                    <p className={`text-3xl font-black mb-2 font-mono
+                ${data?.compliance_rate > 90 ? 'text-emerald-900' : data?.compliance_rate > 70 ? 'text-amber-900' : 'text-rose-900'}`}>{data?.compliance_rate || 0}%</p>
+                    <div className="w-full bg-black/10 h-1.5 rounded-full mt-2">
+                        <div className={`h-1.5 rounded-full ${data?.compliance_rate > 90 ? 'bg-emerald-500' : data?.compliance_rate > 70 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${data?.compliance_rate || 0}%` }}></div>
+                    </div>
+                </div>
+
+                {/* Anomalies Detected */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        Anomalies
+                        {data?.anomalies_detected > 0 && <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>}
+                    </p>
+                    <p className={`text-3xl font-black mb-2 font-mono ${data?.anomalies_detected > 0 ? 'text-rose-600' : 'text-slate-800'}`}>{data?.anomalies_detected || 0}</p>
+                    <p className="text-xs font-semibold text-slate-400">REQUIRES REVIEW</p>
+                </div>
+
+                {/* Docs Processed */}
+                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group text-white xl:col-span-1 lg:col-span-2 md:col-span-2">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                    <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-2">Docs Ingested</p>
+                    <p className="text-3xl font-black mb-2 font-mono">{data?.docs_processed || 0}</p>
+                    <div className="flex gap-2 text-xs text-slate-400 mt-3 font-mono">
+                        {Object.entries(data?.source_breakdown || {}).map(([s, c]) => (
+                            <span key={s} className="bg-slate-700 px-1.5 py-0.5 rounded">{s}:{c}</span>
+                        ))}
+                    </div>
+                </div>
+
+            </div>
+
+            {/* Lower Section placeholders */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+                <div className="bg-white border text-center border-slate-200 p-6 rounded-2xl min-h-[300px] flex items-center justify-center text-slate-400">
+                    <span className="font-medium text-lg">Top 5 Customers by Value</span>
+                    {/* Actual charts go in AnalyticsCharts.jsx */}
+                </div>
+                <div className="bg-white border text-center border-slate-200 p-6 rounded-2xl min-h-[300px] flex items-center justify-center text-slate-400">
+                    <span className="font-medium text-lg">Top 5 Products by Volume</span>
+                </div>
+            </div>
+
+        </div>
+    );
+}
