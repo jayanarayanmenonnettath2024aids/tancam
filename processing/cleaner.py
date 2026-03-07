@@ -32,3 +32,39 @@ def standardize_gstin(val: str) -> str:
 def clean_quantity(val) -> float:
     """Extracts base quantity."""
     return clean_amount(val)
+
+def clean_dataframe(df):
+    """
+    Applies cleaning transformations to a pandas DataFrame of trade records.
+    Standardizes column names, cleans monetary values, parses dates, and drops empty rows.
+    Returns the cleaned DataFrame.
+    """
+    import pandas as pd
+
+    df = df.copy()
+
+    # Normalize column names
+    df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+
+    # Clean monetary/numeric columns
+    money_cols = [c for c in df.columns if any(k in c for k in ['value', 'amount', 'price', 'duty', 'rate', 'qty', 'quantity'])]
+    for col in money_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(clean_amount)
+
+    # Parse date columns
+    date_cols = [c for c in df.columns if 'date' in c]
+    for col in date_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(clean_date)
+
+    # Standardize GSTIN
+    if 'gst_id' in df.columns:
+        df['gst_id'] = df['gst_id'].apply(standardize_gstin)
+    if 'gstin' in df.columns:
+        df['gstin'] = df['gstin'].apply(standardize_gstin)
+
+    # Drop rows that are entirely empty
+    df = df.dropna(how='all')
+
+    return df

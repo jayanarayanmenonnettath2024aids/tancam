@@ -20,5 +20,6 @@ export const ENDPOINTS = {
     QUERY: "/api/query",
     PIPELINE_STATUS: "/api/pipeline/status",
     PIPELINE_SCHEDULE: "/api/pipeline/schedule",
-    PIPELINE_TRIGGER: "/api/pipeline/trigger"
+    PIPELINE_TRIGGER: "/api/pipeline/trigger",
+    USERS: "/api/auth/users"
 };

@@ -16,6 +16,7 @@ export default function Sidebar() {
 
     if (user?.role === 'admin') {
         links.push({ to: "/pipeline", label: "Pipeline Control", icon: "⚡" });
+        links.push({ to: "/users", label: "User Management", icon: "👥" });
     }
 
     return (

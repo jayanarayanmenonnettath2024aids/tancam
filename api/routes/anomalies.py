@@ -5,6 +5,7 @@ from db.models import AnomalyRecord
 
 anomalies_bp = Blueprint('anomalies', __name__)
 
+@anomalies_bp.route('', methods=['GET'])
 @anomalies_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_anomalies():

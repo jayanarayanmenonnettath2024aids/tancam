@@ -25,21 +25,35 @@ def process_query(query_text: str, db_session) -> dict:
     entities = {}
     
     # 1. Intent Detection via Keywords
-    if "total" in query_lower and ("value" in query_lower or "export" in query_lower):
-        intent = "TOTAL_VALUE"
-    elif "count" in query_lower or "how many" in query_lower:
-        if "pending" in query_lower:
-            intent = "COUNT_PENDING"
-        elif "shipment" in query_lower:
-            intent = "COUNT_SHIPMENTS"
-    elif "top" in query_lower and "customer" in query_lower:
+    intent_keywords = {
+        "TOTAL_VALUE": ["total", "value", "export"],
+        "COUNT_PENDING": ["count", "how many", "pending"],
+        "COUNT_SHIPMENTS": ["count", "how many", "shipment"],
+        "TOP_N_CUSTOMERS": ["top", "customer", "buyer"],
+        "STATUS_CHECK": ["status", "where", "shipment", "invoice"],
+        "COMPLIANCE_ALERTS": ["compliance", "alert", "flag", "warning"],
+        "ANOMALY_CHECK": ["anomaly", "suspicious", "fraud", "weird"],
+        "DATE_FILTER": ["last", "this", "month", "week", "year", "before", "after", "between", "since"]
+    }
+    
+    best_intent = "GENERAL"
+    best_score = 0.0
+    
+    for potential_intent, kws in intent_keywords.items():
+        matched = sum(1 for kw in kws if kw in query_lower)
+        if matched > 0:
+            score = matched / len(kws)
+            if score > best_score:
+                best_score = score
+                best_intent = potential_intent
+                
+    intent = best_intent
+    confidence = round(best_score, 2)
+    
+    # Fast track overrides
+    if "top" in query_lower and "customer" in query_lower:
         intent = "TOP_N_CUSTOMERS"
-    elif "status" in query_lower and ("shipment" in query_lower or "invoice" in query_lower):
-        intent = "STATUS_CHECK"
-    elif "compliance" in query_lower or "alert" in query_lower:
-        intent = "COMPLIANCE_ALERTS"
-    elif "anomaly" in query_lower or "suspicious" in query_lower:
-        intent = "ANOMALY_CHECK"
+        confidence = 1.0
         
     # 2. Entity Extraction
     # Extract numbers for TOP_N
@@ -87,6 +101,37 @@ def process_query(query_text: str, db_session) -> dict:
             val = db_session.query(func.count(Shipment.id)).filter(Shipment.status == 'pending').scalar() or 0
             answer = f"There are {val} pending shipments right now."
             
+        elif intent == "COUNT_SHIPMENTS":
+            sql_executed = "SELECT COUNT(*) FROM shipments"
+            val = db_session.query(func.count(Shipment.id)).scalar() or 0
+            answer = f"There are {val} total shipments in the system."
+
+        elif intent == "DATE_FILTER":
+            # Attempt to extract date range from entities or use defaults
+            date_ent = entities.get("DATE", "")
+            if "last month" in query_lower:
+                date_filter_start = now.replace(day=1) - relativedelta(months=1)
+                date_filter_end = now.replace(day=1)
+                sql_executed = "SELECT SUM(total_value), COUNT(*) FROM invoices WHERE invoice_date >= prev_month_start AND invoice_date < this_month_start"
+                val = db_session.query(func.sum(Invoice.total_value)).filter(
+                    Invoice.invoice_date >= date_filter_start,
+                    Invoice.invoice_date < date_filter_end
+                ).scalar() or 0
+                cnt = db_session.query(func.count(Invoice.id)).filter(
+                    Invoice.invoice_date >= date_filter_start,
+                    Invoice.invoice_date < date_filter_end
+                ).scalar() or 0
+                answer = f"Last month: {cnt} invoices with total value ₹{val:,.0f}."
+            elif "last week" in query_lower:
+                date_filter_start = now - datetime.timedelta(days=7)
+                sql_executed = "SELECT COUNT(*), SUM(total_value) FROM invoices WHERE invoice_date >= NOW() - INTERVAL '7 days'"
+                val = db_session.query(func.sum(Invoice.total_value)).filter(Invoice.invoice_date >= date_filter_start).scalar() or 0
+                cnt = db_session.query(func.count(Invoice.id)).filter(Invoice.invoice_date >= date_filter_start).scalar() or 0
+                answer = f"Last 7 days: {cnt} invoices totalling ₹{val:,.0f}."
+            else:
+                answer = f"Date filter query detected ('{date_ent}'). Try 'last month' or 'last week' for specific ranges."
+                sql_executed = ""
+            
         elif intent == "TOP_N_CUSTOMERS":
             limit = int(entities.get("CARDINAL", 5))
             sql_executed = f"SELECT buyer, SUM(total_value) as val FROM invoices GROUP BY buyer ORDER BY val DESC LIMIT {limit}"
@@ -126,6 +171,7 @@ def process_query(query_text: str, db_session) -> dict:
     return {
         "answer": answer,
         "intent": intent,
+        "confidence": confidence,
         "entities": entities,
         "sql_executed": sql_executed,
         "data": data,

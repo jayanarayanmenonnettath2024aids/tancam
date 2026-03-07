@@ -4,6 +4,7 @@ from db.database import SessionLocal
 
 query_bp = Blueprint('query', __name__)
 
+@query_bp.route('', methods=['POST'])
 @query_bp.route('/', methods=['POST'])
 @jwt_required()
 def handle_query():
@@ -15,6 +16,22 @@ def handle_query():
     try:
         from ml.nlp_query import process_query
         result = process_query(data['query'], db)
+        
+        if result.get("intent") == "GENERAL" or result.get("confidence", 0.0) < 0.3:
+            return jsonify({
+                "answer": "I can answer questions like: 'total export value this month', 'top 5 customers by value', 'how many pending shipments', 'any GST compliance alerts', 'suspicious invoices last week'",
+                "intent": "GENERAL",
+                "confidence": result.get("confidence", 0.0),
+                "suggestions": [
+                    "total export value this month",
+                    "top 5 customers by value", 
+                    "how many pending shipments",
+                    "any GST compliance alerts",
+                    "suspicious invoices last week"
+                ],
+                "data": []
+            }), 200
+            
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500

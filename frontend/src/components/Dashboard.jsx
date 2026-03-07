@@ -1,27 +1,33 @@
 import { useState, useEffect } from 'react';
-import axios from '../api/axiosConfig';
-import { ENDPOINTS } from '../api/endpoints';
+import { API_BASE, ENDPOINTS } from '../api/endpoints';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 export default function Dashboard() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState('');
 
-    const fetchData = async () => {
-        try {
-            const res = await axios.get(ENDPOINTS.ANALYTICS_SUMMARY);
-            setData(res.data);
-            setLastUpdated(new Date().toLocaleTimeString());
-        } catch (err) {
-            console.error(err);
-        }
-        setLoading(false);
-    };
-
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 60000); // 60s
-        return () => clearInterval(interval);
+        const token = localStorage.getItem('access_token');
+        const es = new EventSource(`${API_BASE}${ENDPOINTS.ANALYTICS_SUMMARY.replace('/summary', '/stream')}?token=${token}`);
+
+        es.onmessage = (e) => {
+            const parsedData = JSON.parse(e.data);
+            setData(parsedData);
+            setLastUpdated(new Date().toLocaleTimeString());
+            setLoading(false);
+        };
+
+        es.onerror = (err) => {
+            console.error("SSE stream error", err);
+            es.close();
+            setLoading(false);
+        };
+
+        return () => es.close();
     }, []);
 
     if (loading && !data) return <div className="p-8 text-center animate-pulse text-slate-500">Loading Dashboard Data...</div>;
@@ -103,12 +109,51 @@ export default function Dashboard() {
 
             {/* Lower Section placeholders */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-                <div className="bg-white border text-center border-slate-200 p-6 rounded-2xl min-h-[300px] flex items-center justify-center text-slate-400">
-                    <span className="font-medium text-lg">Top 5 Customers by Value</span>
-                    {/* Actual charts go in AnalyticsCharts.jsx */}
+                <div className="bg-white border text-center border-slate-200 p-6 rounded-2xl min-h-[300px] flex flex-col justify-center text-slate-800">
+                    <h3 className="font-bold text-lg mb-4 text-slate-600">Top 5 Customers by Value</h3>
+                    {data?.top_5_customers?.length > 0 ? (
+                        <div className="h-64 relative flex items-center justify-center">
+                            <Pie
+                                data={{
+                                    labels: data.top_5_customers.map(c => c.name),
+                                    datasets: [{
+                                        data: data.top_5_customers.map(c => c.value),
+                                        backgroundColor: ['rgba(59,130,246,0.8)', 'rgba(16,185,129,0.8)', 'rgba(245,158,11,0.8)', 'rgba(99,102,241,0.8)', 'rgba(236,72,153,0.8)'],
+                                        borderWidth: 0,
+                                    }]
+                                }}
+                                options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }}
+                            />
+                        </div>
+                    ) : (
+                        <span className="text-slate-400">No customer data available</span>
+                    )}
                 </div>
-                <div className="bg-white border text-center border-slate-200 p-6 rounded-2xl min-h-[300px] flex items-center justify-center text-slate-400">
-                    <span className="font-medium text-lg">Top 5 Products by Volume</span>
+
+                <div className="bg-white border text-center border-slate-200 p-6 rounded-2xl min-h-[300px] flex flex-col justify-center text-slate-800">
+                    <h3 className="font-bold text-lg mb-4 text-slate-600">Top 5 Destination Ports</h3>
+                    {data?.top_5_products?.length > 0 ? (
+                        <div className="h-64 relative">
+                            <Bar
+                                data={{
+                                    labels: data.top_5_products.map(p => p.name),
+                                    datasets: [{
+                                        label: 'Shipments',
+                                        data: data.top_5_products.map(p => p.count),
+                                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                                        borderRadius: 4
+                                    }]
+                                }}
+                                options={{
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { display: false } },
+                                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <span className="text-slate-400">No product data available</span>
+                    )}
                 </div>
             </div>
 
