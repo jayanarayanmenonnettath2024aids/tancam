@@ -8,6 +8,9 @@ openpyxl>=3.1
 
 # New — Data processing
 spacy>=3.7
+PyMuPDF>=1.23
+Pillow>=10.0
+pytesseract>=0.3.10
 rapidfuzz>=3.5
 recordlinkage>=0.15
 python-dateutil>=2.9

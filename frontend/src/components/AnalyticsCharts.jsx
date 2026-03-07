@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from '../api/axiosConfig';
 import { ENDPOINTS } from '../api/endpoints';
+import { useNavigate } from 'react-router-dom';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -23,21 +24,19 @@ ChartJS.register(
 export default function AnalyticsCharts() {
     const [trends, setTrends] = useState([]);
     const [sources, setSources] = useState([]);
-    const [compTrends, setCompTrends] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [resTrends, resSources, resComp] = await Promise.all([
+                const [resTrends, resSources] = await Promise.all([
                     axios.get(ENDPOINTS.ANALYTICS_TRENDS).catch(() => ({ data: [] })),
-                    axios.get(ENDPOINTS.ANALYTICS_SOURCES).catch(() => ({ data: [] })),
-                    axios.get(ENDPOINTS.ANALYTICS_COMPLIANCE).catch(() => ({ data: [] }))
+                    axios.get(ENDPOINTS.ANALYTICS_SOURCES).catch(() => ({ data: [] }))
                 ]);
                 setTrends(resTrends.data);
                 setSources(resSources.data);
-                setCompTrends(resComp.data);
             } catch (err) {
                 console.error("Chart data fetch failed");
             }
@@ -109,9 +108,28 @@ export default function AnalyticsCharts() {
                 </div>
 
                 <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-4">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-6">Shipment Volume Trajectory</h3>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Shipment Volume Trajectory</h3>
+                        <button onClick={() => window.print()} className="px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-600 rounded whitespace-nowrap border border-slate-200 hover:bg-slate-200 transition-colors">
+                            🖨️ Export PDF
+                        </button>
+                    </div>
                     <div className="h-72">
-                        <Bar data={volumeData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                        <Bar
+                            data={volumeData}
+                            options={{
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                onClick: (event, elements) => {
+                                    if (elements.length > 0) {
+                                        const label = volumeData.labels[elements[0].index];
+                                        // Optional routing here if they wanted month routing. User requested Top Products routing
+                                        // But the user's example explicitly applied it here, we will apply it below when we add products chart later or just here since it's the only bar chart currently
+                                        navigate(`/shipments?search=${encodeURIComponent(label)}`);
+                                    }
+                                }
+                            }}
+                        />
                     </div>
                 </div>
 

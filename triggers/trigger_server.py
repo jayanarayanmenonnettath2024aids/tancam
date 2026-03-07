@@ -7,7 +7,7 @@ from db.database import get_session, bulk_upsert
 from db.models import TriggerLog, Shipment, Invoice, TradeDocument, Customer, Product
 from ingestion.erp_ingest import ingest_erp
 from processing.transform import transform_erp_record
-from ingestion.email_imap_ingest import ingest_unseen_emails
+from ingestion.email_imap_ingest import fetch_invoice_emails
 from ingestion.excel_ingest import ingest_excel
 from ingestion.pdf_ingest import extract_pdf_text_and_tables
 
@@ -122,12 +122,17 @@ def trigger_portal():
         log_trigger(db, "portal", 0, "failed", duration, str(e))
         return {"status": "error", "message": str(e)}
 
+from dotenv import load_dotenv
+load_dotenv()
+
 @app.post("/trigger/email")
 def trigger_email():
     start_time = time.time()
     db = next(get_session())
     try:
-        invoices_data = ingest_unseen_emails(GMAIL_USER, GMAIL_PASSWORD)
+        invoices_data = fetch_invoice_emails()
+        if isinstance(invoices_data, dict) and invoices_data.get('status') == 'error':
+            raise Exception(invoices_data['message'])
         docs = []
         invoices = []
         for inv in invoices_data:
@@ -174,10 +179,16 @@ async def trigger_excel(file: UploadFile = None):
             contents = await file.read()
             with open(file_path, "wb") as f:
                 f.write(contents)
-                
+
         records = []
+        # Try direct path first, then scan sample_excel directory
         if os.path.exists(file_path):
             records = ingest_excel(file_path)
+        else:
+            sample_dir = os.path.join("data", "sample_excel")
+            if os.path.isdir(sample_dir):
+                from ingestion.excel_ingest import ingest_excel_folder
+                records = ingest_excel_folder(sample_dir)
             
         docs = []
         for row in records:
@@ -210,11 +221,19 @@ async def trigger_pdf(file: UploadFile = None):
             contents = await file.read()
             with open(file_path, "wb") as f:
                 f.write(contents)
-                
+
         text = ""
         tables = []
+        # Try direct path, then scan sample_invoices directory
         if os.path.exists(file_path):
             text, tables = extract_pdf_text_and_tables(file_path)
+        else:
+            sample_dir = os.path.join("data", "sample_invoices")
+            if os.path.isdir(sample_dir):
+                for fname in os.listdir(sample_dir):
+                    if fname.endswith('.pdf'):
+                        text, tables = extract_pdf_text_and_tables(os.path.join(sample_dir, fname))
+                        break
             
         doc = TradeDocument(
             doc_type="invoice",

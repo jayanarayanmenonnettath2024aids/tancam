@@ -14,6 +14,7 @@ import ComplianceAlerts from './components/ComplianceAlerts';
 import AnalyticsCharts from './components/AnalyticsCharts';
 import AnomalyPanel from './components/AnomalyPanel';
 import PipelineControl from './components/PipelineControl';
+import UserManagement from './components/UserManagement';
 
 function Layout({ children }) {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/analytics" element={<ProtectedRoute><Layout><AnalyticsCharts /></Layout></ProtectedRoute>} />
           <Route path="/anomalies" element={<ProtectedRoute><Layout><AnomalyPanel /></Layout></ProtectedRoute>} />
           <Route path="/pipeline" element={<ProtectedRoute role="admin"><Layout><PipelineControl /></Layout></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute role="admin"><Layout><UserManagement /></Layout></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

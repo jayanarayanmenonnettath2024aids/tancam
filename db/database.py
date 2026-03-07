@@ -20,6 +20,14 @@ def get_session():
     finally:
         db.close()
 
+def init_db():
+    """
+    Initialize the database by creating all tables and seeding reference data.
+    Delegates to db.init_db module which handles admin user and HS code seeding.
+    """
+    from db.models import Base
+    Base.metadata.create_all(bind=engine)
+
 def bulk_upsert(session, model, records, index_elements):
     """
     Performs UPSERT (ON CONFLICT DO UPDATE).

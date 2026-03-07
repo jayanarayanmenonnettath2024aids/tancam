@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+html,
+body,
+#root {
     @apply h-full bg-slate-50 text-slate-800;
+}
+
+@media print {
+
+    .sidebar,
+    .voice-query,
+    button {
+        display: none !important;
+    }
+
+    .charts-container,
+    .main-content {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 }

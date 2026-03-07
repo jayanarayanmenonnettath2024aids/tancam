@@ -30,9 +30,22 @@ def extract_invoice_from_text(text):
     return invoice
 
 
-def ingest_unseen_emails(username, app_password):
+from dotenv import load_dotenv
+load_dotenv()
+
+
+def fetch_invoice_emails(gmail_user=None, gmail_password=None):
+    user = gmail_user or os.getenv('GMAIL_USER')
+    pwd = gmail_password or os.getenv('GMAIL_PASSWORD')
+    
+    if not user or not pwd:
+        return {
+            'status': 'error',
+            'message': 'GMAIL_USER or GMAIL_PASSWORD not set in .env'
+        }
+        
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
-    mail.login(username, app_password)
+    mail.login(user, pwd)
     mail.select("inbox")
 
     status, messages = mail.search(None, "UNSEEN")

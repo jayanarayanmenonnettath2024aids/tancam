@@ -5,6 +5,7 @@ from db.models import Shipment, Invoice, ComplianceRecord, AnomalyRecord
 
 shipments_bp = Blueprint('shipments', __name__)
 
+@shipments_bp.route('', methods=['GET'])
 @shipments_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_shipments():
