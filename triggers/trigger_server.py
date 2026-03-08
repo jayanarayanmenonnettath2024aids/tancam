@@ -135,6 +135,7 @@ def trigger_email():
             raise Exception(invoices_data['message'])
         docs = []
         invoices = []
+        shipments = []
         for inv in invoices_data:
             docs.append({
                 "doc_type": "email",
@@ -144,15 +145,27 @@ def trigger_email():
             if "invoice_no" in inv:
                 invoices.append({
                     "invoice_no": inv["invoice_no"],
+                    "shipment_id": inv["invoice_no"],
                     "buyer": inv.get("client_name"),
                     "total_value": float(inv["amount"]) if inv.get("amount") else None,
                     "source": "email"
+                })
+                shipments.append({
+                    "id": inv["invoice_no"],
+                    "invoice_no": inv["invoice_no"],
+                    "quantity": 1,
+                    "unit_value": float(inv["amount"]) if inv.get("amount") else 0.0,
+                    "total_value": float(inv["amount"]) if inv.get("amount") else 0.0,
+                    "status": "pending",
+                    "source_system": "email"
                 })
         
         if docs:
             db.bulk_insert_mappings(TradeDocument, docs)
             db.commit()
             
+        if shipments:
+            bulk_upsert(db, Shipment, shipments, ['id'])
         if invoices:
             bulk_upsert(db, Invoice, invoices, ['invoice_no'])
             
@@ -191,16 +204,40 @@ async def trigger_excel(file: UploadFile = None):
                 records = ingest_excel_folder(sample_dir)
             
         docs = []
+        invoices = []
+        shipments = []
         for row in records:
             docs.append({
                 "doc_type": "excel_row",
                 "source": "excel",
                 "extracted_json": row
             })
+            if "invoice_number" in row:
+                invoices.append({
+                    "invoice_no": str(row["invoice_number"]),
+                    "shipment_id": str(row["invoice_number"]),
+                    "buyer": str(row.get("customer_name", "Unknown")),
+                    "total_value": float(row.get("amount", 0)),
+                    "source": "excel"
+                })
+                shipments.append({
+                    "id": str(row["invoice_number"]),
+                    "invoice_no": str(row["invoice_number"]),
+                    "quantity": 1,
+                    "unit_value": float(row.get("amount", 0)),
+                    "total_value": float(row.get("amount", 0)),
+                    "status": "pending",
+                    "source_system": "excel"
+                })
         
         if docs:
             db.bulk_insert_mappings(TradeDocument, docs)
             db.commit()
+            
+        if shipments:
+            bulk_upsert(db, Shipment, shipments, ['id'])
+        if invoices:
+            bulk_upsert(db, Invoice, invoices, ['invoice_no'])
             
         duration = int((time.time() - start_time) * 1000)
         log_trigger(db, "excel", len(records), "ok", duration)
@@ -242,6 +279,37 @@ async def trigger_pdf(file: UploadFile = None):
             extracted_json={"tables": tables}
         )
         db.add(doc)
+        
+        # Very basic regex extraction for the UI
+        import re
+        invoice_no_match = re.search(r'(?i)invoice\s*(?:no|number)?[:\s-]*([A-Z0-9]+)', text)
+        value_match = re.search(r'(?i)(?:total|amount)[\s\w]*[:\s-]*[R\$]?\s*([\d,]+\.?\d*)', text)
+        
+        inv_no = invoice_no_match.group(1) if invoice_no_match else f"PDF-{int(time.time())}"
+        try:
+            val = float(value_match.group(1).replace(',', '')) if value_match else None
+        except:
+            val = None
+            
+        inv = Invoice(
+            invoice_no=inv_no,
+            shipment_id=inv_no,
+            buyer="Extracted PDF Client",
+            total_value=val,
+            source="pdf"
+        )
+        db.add(inv)
+        
+        ship = Shipment(
+            id=inv_no,
+            invoice_no=inv_no,
+            quantity=1,
+            unit_value=val or 0.0,
+            total_value=val or 0.0,
+            status="pending",
+            source_system="pdf"
+        )
+        db.add(ship)
         db.commit()
         
         duration = int((time.time() - start_time) * 1000)

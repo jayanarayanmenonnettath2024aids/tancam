@@ -14,8 +14,12 @@ def handle_query():
         
     db = SessionLocal()
     try:
+        user_id = get_jwt_identity()
+        from db.models import User
+        user = db.query(User).get(int(user_id))
+        
         from ml.nlp_query import process_query
-        result = process_query(data['query'], db)
+        result = process_query(data['query'], db, user=user)
         
         if result.get("intent") == "GENERAL" or result.get("confidence", 0.0) < 0.3:
             return jsonify({

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="8" time="7.621" timestamp="2026-03-08T02:49:20.477760" hostname="JAYANARAYAN"><testcase classname="tests.test_compliance" name="test_gstin_valid" time="0.056"><failure message="assert False is True">def test_gstin_valid():
+        # A valid mock GSTIN (length 15, alphanumeric, ending in checksum)
+        result = check_gstin("27AAAAA0000A1Z5")
+&gt;       assert result["valid"] is True
+E       assert False is True
+
+tests\test_compliance.py:7: AssertionError</failure></testcase><testcase classname="tests.test_compliance" name="test_gstin_invalid_length" time="0.000" /><testcase classname="tests.test_compliance" name="test_gst_amount_correct" time="0.000" /><testcase classname="tests.test_compliance" name="test_gst_amount_incorrect" time="0.000"><failure message="AssertionError: assert 'mismatch' in 'expected ₹180.00 but got ₹150.00'&#10; +  where 'expected ₹180.00 but got ₹150.00' = &lt;built-in method lower of str object at 0x00000213CBF72130&gt;()&#10; +    where &lt;built-in method lower of str object at 0x00000213CBF72130&gt; = 'Expected ₹180.00 but got ₹150.00'.lower">def test_gst_amount_incorrect():
+        # Value 1000, rate 18%, amount is 150 (incorrect)
+        result = check_gst_amount(1000.0, 150.0, 18.0)
+        assert result["valid"] is False
+&gt;       assert "mismatch" in result["flag"].lower()
+E       AssertionError: assert 'mismatch' in 'expected ₹180.00 but got ₹150.00'
+E        +  where 'expected ₹180.00 but got ₹150.00' = &lt;built-in method lower of str object at 0x00000213CBF72130&gt;()
+E        +    where &lt;built-in method lower of str object at 0x00000213CBF72130&gt; = 'Expected ₹180.00 but got ₹150.00'.lower
+
+tests\test_compliance.py:24: AssertionError</failure></testcase><testcase classname="tests.test_nlp_query" name="test_nlp_intent_trade_value" time="0.004" /><testcase classname="tests.test_nlp_query" name="test_nlp_intent_customers" time="0.003" /><testcase classname="tests.test_nlp_query" name="test_nlp_intent_compliance" time="0.003" /><testcase classname="tests.test_nlp_query" name="test_nlp_intent_pending_shipments" time="0.003" /></testsuite></testsuites>

@@ -40,6 +40,23 @@ def init_db():
     else:
         print("Admin user already exists.")
         
+    trader_email = "trader@unifyops.com"
+    existing_trader = db.query(User).filter(User.email == trader_email).first()
+    if not existing_trader:
+        pwd_bytes = "trader123".encode('utf-8')
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+        trader_user = User(
+            email=trader_email,
+            hashed_password=hashed_password,
+            full_name="Extracted PDF Client",
+            role="trader"
+        )
+        db.add(trader_user)
+        print("Seeded default trader user: trader@unifyops.com / trader123")
+    else:
+        print("Trader user already exists.")
+        
     # 2. Seed Reference Data (HS Codes)
     if db.query(HsCode).count() == 0:
         hs_codes = [

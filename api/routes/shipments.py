@@ -16,9 +16,15 @@ def get_shipments():
         status = request.args.get('status')
         source_system = request.args.get('source_system')
         search = request.args.get('search')
+        user_id = get_jwt_identity()
+        from db.models import User
+        user = db.query(User).get(int(user_id))
         
         query = db.query(Shipment)
         
+        if user and user.role == 'trader':
+            query = query.join(Invoice, Shipment.invoice_no == Invoice.shipment_id).filter(Invoice.buyer == user.full_name)
+            
         if status:
             query = query.filter(Shipment.status == status)
         if source_system:

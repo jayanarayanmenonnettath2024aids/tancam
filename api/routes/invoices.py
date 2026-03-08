@@ -16,9 +16,15 @@ def get_invoices():
         per_page = int(request.args.get('per_page', 10))
         status = request.args.get('status')
         source = request.args.get('source')
+        user_id = get_jwt_identity()
+        from db.models import User
+        user = db.query(User).get(int(user_id))
         
         query = db.query(Invoice)
         
+        if user and user.role == 'trader':
+            query = query.filter(Invoice.buyer == user.full_name)
+            
         if source:
             query = query.filter(Invoice.source == source)
             

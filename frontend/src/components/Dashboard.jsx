@@ -32,9 +32,7 @@ export default function Dashboard() {
 
     if (loading && !data) return <div className="p-8 text-center animate-pulse text-slate-500">Loading Dashboard Data...</div>;
 
-    const valueChange = data?.total_trade_value_prev_month
-        ? ((data.total_trade_value_month - data.total_trade_value_prev_month) / data.total_trade_value_prev_month * 100).toFixed(1)
-        : 0;
+    const valueChange = data?.mom_growth_pct || 0;
 
     return (
         <div className="p-8 space-y-6">
@@ -93,14 +91,25 @@ export default function Dashboard() {
                     <p className="text-xs font-semibold text-slate-400">REQUIRES REVIEW</p>
                 </div>
 
-                {/* Docs Processed */}
+                {/* Advanced Engineered Insights */}
                 <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group text-white xl:col-span-1 lg:col-span-2 md:col-span-2">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-                    <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-2">Docs Ingested</p>
-                    <p className="text-3xl font-black mb-2 font-mono">{data?.docs_processed || 0}</p>
-                    <div className="flex gap-2 text-xs text-slate-400 mt-3 font-mono">
+                    <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                        {data?.share_of_revenue_pct > 0 ? "Platform Share" : "Concentration Risk"}
+                    </p>
+                    <p className="text-3xl font-black mb-2 font-mono">
+                        {data?.share_of_revenue_pct > 0
+                            ? `${data.share_of_revenue_pct}%`
+                            : `${data?.risk_concentration_pct || 0}%`}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">
+                        {data?.share_of_revenue_pct > 0
+                            ? "Your weight in total volume"
+                            : "Tied to Top 3 Buyers"}
+                    </p>
+                    <div className="flex gap-2 text-[10px] text-slate-500 mt-3 font-mono opacity-60">
                         {Object.entries(data?.source_breakdown || {}).map(([s, c]) => (
-                            <span key={s} className="bg-slate-700 px-1.5 py-0.5 rounded">{s}:{c}</span>
+                            <span key={s} className="bg-slate-700/50 px-1.5 py-0.5 rounded">{s}:{c}</span>
                         ))}
                     </div>
                 </div>
