@@ -32,9 +32,12 @@ export default function InvoiceViewer() {
 
         setUploading(true);
         try {
-            await axios.post(ENDPOINTS.INVOICES_UPLOAD, formData, {
+            const res = await axios.post(ENDPOINTS.INVOICES_UPLOAD, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
+            if (res.data.status === 'error') {
+                throw new Error(res.data.message || 'Pipeline extraction failed.');
+            }
             alert('Upload & Analysis Complete!');
             setPage(1);
             fetchInvoices();

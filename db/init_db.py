@@ -49,7 +49,7 @@ def init_db():
         trader_user = User(
             email=trader_email,
             hashed_password=hashed_password,
-            full_name="Extracted PDF Client",
+            full_name="Apex Global Logistics",
             role="trader"
         )
         db.add(trader_user)
@@ -90,8 +90,14 @@ def init_db():
     from datetime import datetime, timedelta
     
     if db.query(Shipment).count() < 20:
+        companies = [
+            "Apex Global Logistics", "Meridian Trade Solutions", "Nova Core Shipping", 
+            "Pacific Rim Forwarders", "Vanguard Industrial Exports", "Summit Freight Ltd"
+        ]
+        
         for i in range(20):
-            sid = f"SYNTH_ML_{i}"
+            sid = f"TRD-2026-{str(i+1000).zfill(4)}"
+            buyer_name = random.choice(companies)
             
             # Create exactly 1 clear anomaly at index 12
             if i == 12:
@@ -106,26 +112,26 @@ def init_db():
             
             db.add(Shipment(
                 id=sid, invoice_no=sid, status="cleared", source_system="erp",
-                port_of_loading="INMAA", port_of_discharge="SGSIN",
+                port_of_loading="INMAA", port_of_discharge=random.choice(["SGSIN", "USLAX", "GBFEL"]),
                 quantity=qty, total_value=total_val, unit_value=unit_val,
                 shipment_date=seed_date
             ))
             
             db.add(Invoice(
-                invoice_no=sid, shipment_id=sid, source="erp", buyer="Mock Corp",
+                invoice_no=sid, shipment_id=sid, source="erp", buyer=buyer_name,
                 total_value=total_val, invoice_date=seed_date
             ))
             
             # Seed Trade documents for compliance rate validation
-            db.add(TradeDocument(doc_type='invoice', record_id=sid, source="system", raw_content="mock invoice"))
+            db.add(TradeDocument(doc_type='invoice', extracted_json={"record_id": sid}, source="system", raw_content=f"Commercial Invoice #{sid} - {buyer_name}"))
             if i < 18:
-                db.add(TradeDocument(doc_type='bill_of_lading', record_id=sid, source="system", raw_content="mock bol"))
+                db.add(TradeDocument(doc_type='bill_of_lading', extracted_json={"record_id": sid}, source="system", raw_content=f"Bill of Lading Details for {sid}"))
             if i < 15:
-                db.add(TradeDocument(doc_type='packing_list', record_id=sid, source="system", raw_content="mock pl"))
+                db.add(TradeDocument(doc_type='packing_list', extracted_json={"record_id": sid}, source="system", raw_content=f"Packing List and Weights for {sid}"))
             if i < 12:
-                db.add(TradeDocument(doc_type='certificate_of_origin', record_id=sid, source="system", raw_content="mock coo"))
+                db.add(TradeDocument(doc_type='certificate_of_origin', extracted_json={"record_id": sid}, source="system", raw_content=f"Origin Certificate for INMAA routing - {sid}"))
                 
-        print("Seeded 20 synthetic historical shipments for Anomaly Training with Trade Documents.")
+        print("Seeded 20 realistic historical enterprise shipments for Analytics & ML Training.")
         
     db.commit()
     db.close()
